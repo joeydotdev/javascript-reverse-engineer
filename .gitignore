@@ -1,0 +1,32 @@
+node_modules/
+
+# Ignore everything by default, then allowlist the tooling.
+# This ensures no user data (minified inputs, deminified outputs,
+# preprocessed artifacts) is ever accidentally committed.
+*
+
+# Allowlist: repo structure
+!.gitignore
+!.gitkeep
+!opencode.json
+!package.json
+!package-lock.json
+
+# Allowlist: input/output directory placeholders
+!input/
+!output/
+input/*
+output/*
+!input/.gitkeep
+!output/.gitkeep
+
+# Allowlist: opencode config, agents, skills, and tests
+!.opencode/
+!.opencode/**/
+!.opencode/**/*.md
+!.opencode/**/*.mjs
+!.opencode/**/*.js
+!.opencode/**/*.json
+
+# Re-ignore test temp files
+.opencode/skills/deminify/tests/.tmp/

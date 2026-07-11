@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "name": "deminify",
+  "description": "OpenCode skill for deminifying JavaScript — scripts and tooling",
+  "scripts": {
+    "test": "node .opencode/skills/deminify/tests/run.mjs",
+    "preprocess": "node .opencode/skills/deminify/preprocess.mjs",
+    "jsx-restore": "node .opencode/skills/deminify/jsx-restore.mjs"
+  },
+  "devDependencies": {
+    "@babel/generator": "^7",
+    "@babel/parser": "^7",
+    "@babel/traverse": "^7",
+    "@babel/types": "^7"
+  }
+}
