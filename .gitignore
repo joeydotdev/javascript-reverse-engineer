@@ -6,6 +6,7 @@ node_modules/
 *
 
 # Allowlist: repo structure
+!README.md
 !.gitignore
 !.gitkeep
 !opencode.json
