@@ -21,29 +21,17 @@ files grouped into logical modules.
 
 ## Workflow
 
-### Step 0: Preprocess (always do this first)
+### Step 0: Capture (always do this first)
 
-Before doing any semantic work, run the preprocessing script to handle all
-mechanical transforms for free:
+Before doing any semantic work, capture the page or the local file:
 
 ```bash
-node .opencode/skills/reverse-engineer/preprocess.mjs input/<file.js> --split --analyze
+node .opencode/skills/reverse-engineer/capture.mjs <url-or-path>
 ```
 
-This will output to `output/<name>-preprocessed/` (gitignored) and:
-- Deobfuscate mechanical patterns (`!0` → `true`, hex escapes, etc.)
-- Generate a structural analysis report (`_analysis.txt`)
-- Split bundled modules into individual files (if `--split` is passed)
-- Format the code with prettier (if available)
+This writes `output/<captureId>/capture.json`. Read that manifest. Every later path comes from it. For each ready asset, read `status.analysis` and work from the preprocessed files it names. Work from that output, not from the raw minified source.
 
-Read the `_analysis.txt` report to understand the file's structure before
-proceeding.
-
-Work from the preprocessed output, not the raw minified source.
-
-**All deminified output files go into `output/<name>/`** (e.g.,
-`output/my-lib/`). This directory is gitignored. Never write output
-alongside the minified source files.
+**Write deminified files into `status.deminifiedDir` for each ready asset.** That directory is gitignored. Never write output alongside the minified source files.
 
 ### Step 1–3: Follow the reverse-engineer skill
 
