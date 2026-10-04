@@ -1,6 +1,6 @@
 ---
 name: reverse-engineer
-description: Deminify, reverse-engineer, and restructure minified/obfuscated JavaScript files into readable, documented modules. Use when the user asks to deminify, deobfuscate, reverse-engineer, unminify, or prettify JavaScript files, or to split a minified bundle into logical modules.
+description: Deminify, reverse-engineer, and restructure minified/obfuscated JavaScript from a page URL or a local file into readable, documented modules. Use when the user asks to deminify, deobfuscate, reverse-engineer, unminify, or prettify a page or a JavaScript file, or to split a minified bundle into logical modules.
 ---
 
 # Deminify JavaScript
@@ -45,39 +45,22 @@ so the user knows what was excluded.
 
 ## Directory Convention
 
-- **Input**: Place minified source files in `input/`. This directory is
-  gitignored and not committed.
-- **Output**: All deminified output goes into `output/<source-name>/`. This
-  directory is also gitignored.
-- **Preprocessing**: The preprocessing script writes to
-  `output/<name>-preprocessed/` by default.
-
-Never write output alongside the source files or into the repo root.
+Every path comes from `capture.json` under `output/<captureId>/`. That directory is gitignored. Write deminified files only into each ready asset's `status.deminifiedDir`.
 
 ## Cost-Optimization Strategy
 
 Deminification is token-intensive. Follow this phased workflow to minimize
 wasted work and avoid re-processing.
 
-### Phase 0: Preprocessing (mechanical, free)
+### Phase 0: Capture
 
-**Always run the preprocessing script first.** This handles all transforms
-that don't require semantic understanding, saving significant token cost:
+Run this before any semantic work. The argument is a page URL, a direct script URL, or a local path.
 
 ```bash
-node .opencode/skills/reverse-engineer/preprocess.mjs input/<file.js> --split --analyze
+node .opencode/skills/reverse-engineer/capture.mjs <url-or-path>
 ```
 
-This produces:
-- A deobfuscated, formatted copy of the source (`!0` → `true`, hex decoding,
-  prettier formatting)
-- A structural analysis report (`_analysis.txt`) with module boundaries,
-  function/class counts, dependency hints, and notable string constants
-- (With `--split`) Individual module files extracted from webpack or
-  registration-based bundles
-
-**Work from the preprocessed output for all subsequent phases.** Do not
-re-do any transforms the script already handled.
+The command writes `output/<captureId>/capture.json`. It fetches the scripts on a page, or reads the local file, and runs `preprocess.mjs` on each script it keeps. Later phases read paths from that manifest. Do not re-do transforms the preprocessor already handled.
 
 ### Advisor Escalation
 
@@ -95,8 +78,9 @@ ask a **specific question**. Apply the answer and move on.
 
 ### Phase 1: Structural Analysis (read-only, low cost)
 
-Before writing any code, analyze the minified file to build a mental map.
-Start by reading the `_analysis.txt` from Phase 0, then supplement:
+Read `capture.json` before writing any code. For each asset whose `status.kind` is `ready`, read `status.analysis`, then work from `status.preprocessedFile` and `status.modulesDir`. Repeat every `gaps` entry in the decomposition plan.
+
+For each ready asset, supplement that report:
 
 1. **Read the preprocessed file** to understand its scope (the script already
    formatted and deobfuscated it).
@@ -133,6 +117,7 @@ Start by reading the `_analysis.txt` from Phase 0, then supplement:
 6. **Propose a file decomposition plan** to the user: list the logical modules
    you identified, the proposed filenames, and a one-line description of each.
    Mark public libraries as "[skip — <library name>]".
+   Repeat every `gaps` entry from `capture.json` in that plan.
    Wait for confirmation before proceeding to Phase 2.
 
 ### Phase 2: Module-by-Module Deminification
@@ -142,10 +127,10 @@ to the next. This keeps each write focused and avoids context blowup.
 
 For each module:
 
-1. **Extract** the relevant code section from the minified source.
+1. **Extract** the relevant code section from the preprocessed file named in the manifest.
 2. **Rename variables** using the rules below.
 3. **Add JSDoc annotations** using the rules below.
-4. **Write the output file** to the target directory.
+4. **Write the output file** into that asset's `status.deminifiedDir`.
 5. **Move on** to the next module. Do NOT revisit earlier files unless a
    later module reveals a naming mistake.
 
@@ -350,7 +335,7 @@ the output as `.jsx`. See the script header for full usage and options.
 
 | Concern | Convention |
 |---|---|
-| **Directory** | Write all output to `output/<source-name>/` (e.g., `output/my-lib/` for `my-lib.min.js`). The `output/` directory is gitignored. Do not write deminified files alongside the minified source. |
+| **Directory** | Write deminified files into `status.deminifiedDir` from `capture.json`. That path is `output/<captureId>/src/<assetId>/`. The `output/` directory is gitignored. Do not write deminified files alongside the minified source. |
 | **File names** | Lowercase kebab-case reflecting the module's purpose: `api-client.jsx`, `constants.js`, `event-emitter.js`. Use `.jsx` for files with JSX content, `.js` otherwise. |
 | **Module style** | Use `export function` / `export class` / `export const` at the top level. Preserve any runtime module registration logic (loader calls, `define()`, `module.exports`) intact — it's runtime behavior, not just build artifact. |
 | **Encoding** | UTF-8. Decode hex escapes (`\x3d` → `=`, `\x26` → `&`) and unicode escapes back to readable characters in string literals. |
@@ -601,8 +586,7 @@ For files that exceed the read limit:
 
 ## Interaction Protocol
 
-1. When the skill is triggered, ask the user which minified file(s) to
-   process (or confirm if they already specified).
+1. When the skill is triggered, take the page URL or local path the user gave. If they have not given one, ask for it.
 2. Present the Phase 1 decomposition plan and wait for approval.
 3. Process modules one at a time, writing each file as you go.
 4. After all modules are written, give a summary listing:

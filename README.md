@@ -15,8 +15,8 @@ An OpenCode workspace for reverse-engineering minified and obfuscated JavaScript
 ## Directory layout
 
 ```
-input/          # Drop minified source files here (gitignored)
-output/         # Deminified output lands here (gitignored)
+input/          # Optional scratch space (gitignored). A local path does not have to live here.
+output/         # capture.json and deminified files land here (gitignored)
 .opencode/
   agents/
     reverse-engineer.md          # Primary agent (GLM-Z1 Rumination, 200 steps)
@@ -24,32 +24,35 @@ output/         # Deminified output lands here (gitignored)
   skills/
     reverse-engineer/
       SKILL.md         # Detailed workflow, rules, and examples
-      preprocess.mjs   # Mechanical preprocessing script (run first)
+      capture.mjs      # Fetches a page URL or local file and writes capture.json
+      preprocess.mjs   # Mechanical preprocessing. capture.mjs runs this per script.
       jsx-restore.mjs  # Batch JSX restoration for already-deminified files
       tests/           # Test suite for the scripts
 ```
 
 ## Quickstart
 
-1. Drop a minified `.js` file into `input/`.
-2. Open OpenCode and describe what you want, e.g.:
-   - "Reverse-engineer `input/bundle.js`"
-   - "Deminify `input/app.min.js` and split it into modules"
-3. The `reverse-engineer` agent activates automatically, runs the preprocessor, proposes a module decomposition plan, and writes output to `output/<name>/`.
+Pass a page URL to `capture.mjs`. A local `.js` path works the same way, and it does not need to sit in `input/`.
+
+```bash
+node .opencode/skills/reverse-engineer/capture.mjs https://app.example.com/dashboard
+node .opencode/skills/reverse-engineer/capture.mjs path/to/bundle.js
+```
+
+The command writes `output/<captureId>/capture.json`. Open OpenCode and ask it to reverse-engineer that page or file. The `reverse-engineer` agent reads the manifest, proposes a module decomposition plan, and writes deminified files into the directories `capture.json` names.
 
 ## Preprocessing script
 
-Run this manually before starting if you want to inspect the structure first:
+`capture.mjs` runs this on each script it keeps:
 
 ```bash
-node .opencode/skills/reverse-engineer/preprocess.mjs input/<file.js> --split --analyze
+node .opencode/skills/reverse-engineer/preprocess.mjs <file.js> --outdir <dir> --split
 ```
 
 Flags:
-- `--split` — extract individual modules into separate files
-- `--analyze` — generate a `_analysis.txt` structural report
-
-Output goes to `output/<name>-preprocessed/` by default.
+- `--split` extracts individual modules into separate files
+- `--analyze` prints the structural report the script also writes to `_analysis.txt`
+- `--no-format` skips prettier
 
 ## JSX restoration
 
@@ -72,7 +75,7 @@ The advisor is read-only (no edit/bash access) and is invoked via the Task tool 
 
 ## Output conventions
 
-- Files go in `output/<source-name>/` (gitignored)
+- Deminified files go in the `deminifiedDir` recorded for each ready asset in `capture.json` (under `output/<captureId>/`, gitignored)
 - Filenames: lowercase kebab-case (`api-client.jsx`, `event-emitter.js`)
 - `.jsx` extension for files containing JSX, `.js` otherwise
 - 2-space indent, single quotes, trailing commas, modern syntax
