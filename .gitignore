@@ -31,3 +31,4 @@ output/*
 
 # Re-ignore test temp files
 .opencode/skills/deminify/tests/.tmp/
+.opencode/skills/reverse-engineer/tests/.tmp/
